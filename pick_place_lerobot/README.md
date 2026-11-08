@@ -5,4 +5,4 @@ uv run python pick_place_lerobot/record.py --repo-id local/ur5e_pick_place --num
 
 
 ## Replay of recorded episodes
-uv run python -m lerobot.scripts.visualize_dataset --repo-id local/ur5e_pick_place --episode-index 0
+uv run lerobot-dataset-viz --repo-id local/ur5e_pick_place --episode-index 0

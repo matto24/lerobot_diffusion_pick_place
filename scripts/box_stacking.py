@@ -68,7 +68,8 @@ def linear_path_is_continuous(robot, q_start, T0, T1, samples=10, max_step=0.3):
     """
     q_prev = q_start
     for T in rtb.ctraj(T0=T0, T1=T1, t=samples):
-        q, success, *_ = robot.robot_ur5.ik_LM(Tep=T, q0=q_prev)
+        sol = robot.robot_ur5.ik_LM(Tep=T, q0=q_prev)
+        q, success = sol.q, sol.success
         if not success or np.abs(q - q_prev).max() > max_step:
             return False
         q_prev = q
@@ -89,7 +90,8 @@ def solve_ik(robot, m, d, frame, q_near, follow=None, tries=50):
     sols = []
     for k in range(tries):
         seed = q_near if k == 0 else q_near + np.random.uniform(-1, 1, 6)
-        q, success, *_ = robot.robot_ur5.ik_LM(Tep=frame, q0=seed)
+        sol = robot.robot_ur5.ik_LM(Tep=frame, q0=seed)
+        q, success = sol.q, sol.success
         if not success:
             continue
         q = (q + np.pi) % (2 * np.pi) - np.pi  # same pose, inside planner bounds

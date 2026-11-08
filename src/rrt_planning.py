@@ -86,7 +86,7 @@ def move_to_point(robot, m, d, start_q, end_q):
     # Define grasping frames for object: box
     obj_frame = get_mjobj_frame(model=m, data=d, obj_name=end_q)  # Get body frame
     obj_frame = obj_frame * sm.SE3.Rx(-np.pi)
-    obj_desired_q = robot.robot_ur5.ik_LM(Tep=obj_frame, q0=start_q)[0]
+    obj_desired_q = robot.robot_ur5.ik_LM(Tep=obj_frame, q0=start_q).q
     trajectory = plan(d, m, start_q, obj_desired_q)
     if trajectory is None:
         print("No collision free trajectory found")

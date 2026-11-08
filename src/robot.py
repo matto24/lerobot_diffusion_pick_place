@@ -213,9 +213,9 @@ class UR5robot:
         qinit = q0
         for cpose in rtb.ctraj(T0=T0, T1=T1, t=steps):  # .s to get position information
             q_step = self.robot_ur5.ik_LM(Tep=cpose, q0=qinit)
-            if q_step[1]:
-                self.queue.append((q_step[0], None))
-                qinit = q_step[0]
+            if q_step.success:
+                self.queue.append((q_step.q, None))
+                qinit = q_step.q
 
     def move_j(self, start_q, end_q, t=100):
         for step in rtb.jtraj(
