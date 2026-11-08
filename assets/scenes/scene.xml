@@ -1,0 +1,48 @@
+<mujoco model="scene">
+	<compiler angle="radian" autolimits="true" />
+	<option timestep="0.002" integrator="implicitfast" solver="Newton" gravity="0 0 -9.82" cone="elliptic"/>
+
+	<visual>
+		<global azimuth="120" elevation="-20" offwidth="1280" offheight="720"/>
+		<!-- <headlight diffuse="0.6 0.6 0.6" specular="0 0 0" /> -->
+		<rgba haze="0.15 0.25 0.35 1" />
+		<!-- <quality offsamples="5"/> -->
+	</visual>
+
+	<statistic meansize="0.1" extent="1" center="4 0 0" />
+	
+	<!-- Hand-E parallel gripper on UR5e with wrist camera -->
+	<include file="../UR5eGripper/ur5e_hande.xml" />
+
+	<asset>
+		<mesh name="table_mesh" file="../table/sigmund_table.stl" />
+		<texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072" />
+		<texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4"
+			rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300" />
+		<material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2" />
+	</asset>
+
+	<worldbody>
+		<geom name="floor" pos="0 0 -0.74" size="0 0 0.05" type="plane" material="groundplane" />
+		<light pos="0 0 0.5" dir="0 0 -1" type="directional" range="100" bulbradius="0.1"/>
+
+		<!-- Single Work Table in front of UR5e -->
+		<geom name="table" pos="0.801 -0.6 0" type="mesh" rgba="0.1 0.1 0.1 1" mesh="table_mesh" condim="6" solref="0.001 2" solimp="0.99 0.999 0.001"/>
+
+		<!-- Target Object (Box) -->
+		<body name="box" pos="0.6 0.2 0.02" quat="1 0 0 0">
+			<freejoint name="box" />
+			<geom name="box" type="box" mass="0.01" size="0.02 0.02 0.02" rgba="1 0 1 1" condim="6" solref="0.001 2" solimp="0.99 0.999 0.001"/>
+		</body>
+
+		<!-- Visual Goal Condition: Green Target Disc (can be moved anywhere on table) -->
+		<body name="drop_target" pos="0.55 -0.2 0.001">
+			<geom name="drop_target_geom" type="cylinder" size="0.06 0.001" rgba="0 1 0 0.8" contype="0" conaffinity="0"/>
+		</body>
+
+		<!-- Intel RealSense D415 Overview Camera (fovy=43 deg) framing the entire table -->
+		<camera name="cam_exterior" pos="1.35 0 1.05" euler="0 0.65 1.57" fovy="43" mode="fixed"/>
+
+	</worldbody>
+
+</mujoco>
