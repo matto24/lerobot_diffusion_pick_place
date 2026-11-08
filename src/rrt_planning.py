@@ -8,6 +8,9 @@ import csv
 
 from ompl import base as ob
 from ompl import geometric as og
+from ompl import util as ou
+
+ou.setLogLevel(ou.LogLevel.LOG_ERROR)
 
 from src.robot import *
 
@@ -92,64 +95,3 @@ def move_to_point(robot, m, d, start_q, end_q):
             robot.queue.append((step, None))
 
     return obj_desired_q
-
-
-def program(d, m):
-    # Define our robot object
-    robot = UR5robot(data=d, model=m)
-    dk = []
-
-    replay = True
-    if replay:
-        # get q-poses from csv file
-        with open("recordings/box_qpose_RRT.csv", "r") as f:
-            reader = csv.reader(f)
-            for row in reader:
-                q_pose = np.array(row[:6], dtype=float)
-                gripper_val = None if row[6] == "" else float(row[6])
-                dk.append(robot.robot_ur5.fkine(q_pose))
-                robot.queue.append((q_pose, gripper_val))
-
-            positions = np.array([Q[:3, 3] for Q in dk])  # x, y, z positions
-            fig = plt.figure()
-            plt.plot(positions[:, 0], label="x")
-            plt.plot(positions[:, 1], label="y")
-            plt.plot(positions[:, 2], label="z")
-            plt.xlabel("Step")
-            plt.legend()
-            plt.savefig("DK_box_rrt.svg", format="svg")
-
-        return robot.queue
-
-    start_q = robot.get_current_q()
-    # BOX
-    # start_q = move_to_point(robot, m, d, start_q, "pickup_point_box")
-    # robot.set_gripper(value=200, t=1000)
-    # start_q = move_to_point(robot, m, d, start_q, "drop_point_box")
-    # robot.set_gripper(value=0, t=1000)
-
-    # Cylinder
-    # start_q = move_to_point(robot, m, d, start_q, "approach_point_cylinder")
-    # start_q = move_to_point(robot, m, d, start_q, "pickup_point_cylinder")
-    # robot.set_gripper(value=250, t=1000)
-    # start_q = move_to_point(robot, m, d, start_q, "pre_drop_cylinder")
-    # start_q = move_to_point(robot, m, d, start_q, "drop_point_cylinder")
-    # robot.set_gripper(value=0, t=1000)
-
-    # TBLOCK
-    # start_q = move_to_point(robot, m, d, start_q, "pickup_point_tblock")
-    # robot.set_gripper(value=200, t=1000)
-    # start_q = move_to_point(robot, m, d, start_q, "drop_point_tblock")
-    # robot.set_gripper(value=0, t=1000)
-
-    # save q_pose to csv file
-    # with open("recordings/tblock_qpose.csv", "w") as f:
-    #     writer = csv.writer(f)
-    #
-    #     for q_pose, gripper_val in robot.queue:
-    #         row = list(q_pose) + [gripper_val]
-    #         writer.writerow(row)
-    #
-    # print("DONE")
-
-    return robot.queue
