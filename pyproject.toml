@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "lerobot[dataset,dataset-viz]>=0.7.0",
+  "lerobot[dataset,dataset-viz,diffusion]>=0.7.0",
   "matplotlib>=3.10.7",
   "mujoco>=3.3.7",
   "numpy-quaternion>=2024.0.12",
