@@ -61,24 +61,41 @@ if __name__ == "__main__":
         with concurrent.futures.ProcessPoolExecutor(
             max_workers=NUM_WORKERS
         ) as executor:
-            futures = [
-                executor.submit(generate_single_episode, i) for i in range(NUM_EPISODES)
-            ]
+            # Each finished episode is ~200 MB of raw frames, and writing it to
+            # the dataset is slower than generating it. Submitting everything
+            # up front lets finished results pile up in this process until the
+            # OOM killer takes it, so keep only a bounded number in flight.
+            max_in_flight = NUM_WORKERS + 2
+            next_episode = 0
+            pending = set()
 
-            # As each worker finishes, write to the dataset
-            for future in concurrent.futures.as_completed(futures):
-                result = future.result()
-                if result is None:
-                    continue
+            def submit_more():
+                global next_episode
+                while next_episode < NUM_EPISODES and len(pending) < max_in_flight:
+                    pending.add(executor.submit(generate_single_episode, next_episode))
+                    next_episode += 1
 
-                for frame in result["frames"]:
-                    dataset.add_frame({**frame, "task": TASK})
-                dataset.save_episode()
-
-                saved_episodes += 1
-                print(
-                    f"Saved episode {saved_episodes}/{NUM_EPISODES} (from worker task {result['episode_id']})"
+            submit_more()
+            while pending:
+                done, pending = concurrent.futures.wait(
+                    pending, return_when=concurrent.futures.FIRST_COMPLETED
                 )
+                for future in done:
+                    result = future.result()
+                    if result is None:
+                        continue
+
+                    for frame in result["frames"]:
+                        dataset.add_frame({**frame, "task": TASK})
+                    dataset.save_episode()
+
+                    saved_episodes += 1
+                    print(
+                        f"Saved episode {saved_episodes}/{NUM_EPISODES} (from worker task {result['episode_id']})"
+                    )
+                # Drop references so the frames can be freed.
+                del done, future, result
+                submit_more()
     finally:
         # v3.0 buffers metadata and parquet writes; finalize flushes them so the
         # dataset is readable, also after Ctrl-C or a crash mid-recording.
