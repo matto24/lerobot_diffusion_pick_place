@@ -56,7 +56,7 @@ def parse_args():
         "--max-steps",
         type=int,
         default=700,
-        help="Max policy steps (25 Hz) per episode. Expert demos are 450 steps.",
+        help="Max policy steps (25 Hz) per episode. Expert demos are 450-500 steps.",
     )
     parser.add_argument("--seed", type=int, default=1000, help="Episode i uses seed + i.")
     parser.add_argument("--headless", action="store_true", help="No viewer, run as fast as possible.")
