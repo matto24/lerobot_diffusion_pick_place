@@ -39,3 +39,16 @@ lerobot-train --dataset.repo_id="MattoTT/ur5e_pick_place_v2" --policy.type=diffu
   --policy.push_to_hub=true --policy.repo_id="MattoTT/diffusion_ur5e_pick_place" --policy.private=true \
   --trackio.enable=true --trackio.space_id="MattoTT/ur5e-tracker" --trackio.private=true \
   --accelerator.mixed_precision=bf16
+
+Local command
+
+lerobot-train --dataset.repo_id="MattoTT/ur5e_pick_place_v2" --policy.type=diffusion \
+  --output_dir="outputs/train/diffusion_ur5e_v2" \
+  --batch_size=64 --steps=100000 --num_workers=$(( $(nproc) - 2 )) \
+  --policy.horizon=16 --policy.n_action_steps=8 \
+  --policy.crop_shape="[216, 288]" \
+  --policy.device=cuda \
+  --save_checkpoint=true --save_freq=10000 \
+  --policy.push_to_hub=true --policy.repo_id="MattoTT/diffusion_ur5e_pick_place_v2" --policy.private=true \
+  --accelerator.mixed_precision=bf16
+
