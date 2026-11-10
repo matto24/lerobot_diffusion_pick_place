@@ -18,7 +18,6 @@ Usage:
 
 import argparse
 import contextlib
-import io
 import random
 import time
 
@@ -26,12 +25,11 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 import torch
-from PIL import Image
 
 from lerobot.policies import make_pre_post_processors
 from lerobot.policies.diffusion.modeling_diffusion import DiffusionPolicy
 from pick_place_lerobot.expert_episode import measured_gripper
-from pick_place_lerobot.lerobot_dataset import FPS, SUBSAMPLE_STEPS
+from pick_place_lerobot.lerobot_dataset import FPS, IMAGE_HEIGHT, IMAGE_WIDTH, SUBSAMPLE_STEPS
 from scripts.box_movement_example import get_random_drop_frame, random_box_pos
 from src.cam import get_dual_camera_rgb
 from src.paths import PROJECT_ROOT
@@ -43,11 +41,6 @@ HOME_Q = np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, 0])
 # on the table, gripper commanded open, for half a second in a row.
 DROP_RADIUS = 0.06
 SUCCESS_HOLD_FRAMES = FPS // 2
-
-# The policy was trained on the downscaled dataset (scripts/downscale_dataset.py):
-# 320x240, PIL bilinear, JPEG q95. Feed it frames prepared the same way.
-TRAIN_IMAGE_SIZE = (320, 240)  # (W, H)
-TRAIN_JPEG_QUALITY = 95
 
 
 def parse_args():
@@ -76,12 +69,11 @@ def parse_args():
 
 
 def to_policy_image(frame: np.ndarray) -> torch.Tensor:
-    """(H, W, 3) uint8 render -> (3, 240, 320) float in [0, 1], like the training data."""
-    img = Image.fromarray(frame).resize(TRAIN_IMAGE_SIZE, Image.Resampling.BILINEAR)
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=TRAIN_JPEG_QUALITY)
-    img = np.array(Image.open(buf).convert("RGB"))
-    return torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
+    """(H, W, 3) uint8 render -> (3, H, W) float in [0, 1], like the training data.
+
+    Frames are rendered at the recording size (IMAGE_HEIGHT x IMAGE_WIDTH), so no resize.
+    """
+    return torch.from_numpy(frame.copy()).permute(2, 0, 1).float() / 255.0
 
 
 def reset_episode(m, d, seed: int) -> np.ndarray:
@@ -167,7 +159,7 @@ def main():
 
     m = mujoco.MjModel.from_xml_path(str(PROJECT_ROOT / "assets/scenes/scene.xml"))
     d = mujoco.MjData(m)
-    renderer = mujoco.Renderer(m, 480, 640)
+    renderer = mujoco.Renderer(m, IMAGE_HEIGHT, IMAGE_WIDTH)
 
     viewer_ctx = contextlib.nullcontext() if args.headless else mujoco.viewer.launch_passive(m, d)
     results = []

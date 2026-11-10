@@ -5,7 +5,7 @@ from src.paths import PROJECT_ROOT
 from src.cam import get_dual_camera_rgb
 from src.robot import ur_set_qpos, hande_ctrl_qpos, ur_ctrl_qpos, ur_get_qpos
 from scripts.box_movement_example import program
-from pick_place_lerobot.lerobot_dataset import SUBSAMPLE_STEPS
+from pick_place_lerobot.lerobot_dataset import IMAGE_HEIGHT, IMAGE_WIDTH, SUBSAMPLE_STEPS
 
 # hande_fingers_actuator maps ctrl 0..255 onto the "split" tendon length 0..0.025 m,
 # so this scale puts the measured opening in the same units as the gripper command.
@@ -39,7 +39,7 @@ def generate_single_episode(episode_id: int) -> dict | None:
     # Each worker loads its own independent MuJoCo model and renderer
     m = mujoco.MjModel.from_xml_path(str(PROJECT_ROOT / "assets/scenes/scene.xml"))
     d = mujoco.MjData(m)
-    renderer = mujoco.Renderer(m, 480, 640)
+    renderer = mujoco.Renderer(m, IMAGE_HEIGHT, IMAGE_WIDTH)
 
     # 1. Reset to home pose
     target_pos = np.array([0, -np.pi / 2, np.pi / 2, -np.pi / 2, -np.pi / 2, 0])

@@ -58,7 +58,9 @@ if __name__ == "__main__":
 
     saved_episodes = 0
     try:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=NUM_WORKERS) as executor:
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=NUM_WORKERS
+        ) as executor:
             futures = [
                 executor.submit(generate_single_episode, i) for i in range(NUM_EPISODES)
             ]

@@ -30,9 +30,10 @@
 		<geom name="table" pos="0.801 -0.6 0" type="mesh" rgba="0.1 0.1 0.1 1" mesh="table_mesh" condim="6" solref="0.001 2" solimp="0.99 0.999 0.001"/>
 
 		<!-- Target Object (Box) -->
-		<body name="box" pos="0.6 0.2 0.02" quat="1 0 0 0">
+		<!-- 3 cm cube: its 42 mm diagonal fits inside the Hand-E's 50 mm opening at any yaw -->
+		<body name="box" pos="0.6 0.2 0.015" quat="1 0 0 0">
 			<freejoint name="box" />
-			<geom name="box" type="box" mass="0.01" size="0.02 0.02 0.02" rgba="1 0 1 1" condim="6" solref="0.001 2" solimp="0.99 0.999 0.001"/>
+			<geom name="box" type="box" mass="0.01" size="0.015 0.015 0.015" rgba="1 0 1 1" condim="6" solref="0.001 2" solimp="0.99 0.999 0.001"/>
 		</body>
 
 		<!-- Visual Goal Condition: Green Target Disc (can be moved anywhere on table) -->

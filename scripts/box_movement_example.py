@@ -44,12 +44,30 @@ def get_random_drop_frame(m, d, box_xy=None, min_dist=0.15):
     mujoco.mj_forward(m, d)
 
     # Height of box resting on table
-    box_half_height = m.geom("box").size[2]  # 0.02
+    box_half_height = m.geom("box").size[2]
     drop_z = box_half_height
 
     # Construct the SE3 target pose (facing downwards)
     drop_frame = sm.SE3(rand_x, rand_y, drop_z) * sm.SE3.Rx(-np.pi)
     return drop_frame
+
+
+def grasp_frame(m, d, ref_yaw):
+    """
+    Top-down grasp on the box, at the one of its four equivalent yaws closest to ref_yaw.
+
+    The cube looks the same every 90 degrees, and a two-finger grasp works on
+    either pair of faces, so yaw + k * 90 deg are all the same grasp. Using the
+    box's raw yaw would make the wrist angle depend on a rotation the cameras
+    cannot see. Choosing the one closest to ref_yaw keeps the target a function
+    of what the cameras see. The chosen yaw is within 45 degrees of ref_yaw; the
+    wrist itself may turn a little more, since the shoulder pan also rotates the tool.
+    """
+    box = get_mjobj_frame(model=m, data=d, obj_name="box")
+    yaw = box.rpy()[2]
+    yaw += np.round((ref_yaw - yaw) / (np.pi / 2)) * (np.pi / 2)
+    # Rx(-pi) flips z to point down into the table, like the tool.
+    return sm.SE3(box.t) * sm.SE3.Rz(yaw) * sm.SE3.Rx(-np.pi)
 
 
 def linear_path_is_continuous(robot, q_start, T0, T1, samples=10, max_step=0.3):
@@ -156,7 +174,7 @@ def program(d, m):
     start_q = robot.get_current_q()
 
     # tool z points down here, so +z moves the TCP down into the box
-    obj_frame = get_mjobj_frame(model=m, data=d, obj_name="box") * sm.SE3.Rx(-np.pi)
+    obj_frame = grasp_frame(m, d, ref_yaw=robot.get_current_tcp().rpy()[2])
     # create an intermediate point 10cm above the object
     approach_frame = obj_frame * sm.SE3(0, 0, -0.1)
 
