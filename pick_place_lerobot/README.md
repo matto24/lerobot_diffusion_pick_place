@@ -32,7 +32,7 @@ export HF_TOKEN="your_huggingface_token_here"
 ## Long run
 lerobot-train --dataset.repo_id="MattoTT/ur5e_pick_place_v2" --policy.type=diffusion \
   --output_dir=outputs/train/diffusion_ur5e_v2 \
-  --batch_size=64 --steps=100000 --num_workers=22 \
+  --batch_size=128 --steps=100000 --num_workers=40 \
   --policy.horizon=16 --policy.n_action_steps=8 \
   --policy.crop_shape="[216, 288]" \
   --save_checkpoint=true --save_freq=20000 \
@@ -44,7 +44,7 @@ lerobot-train --dataset.repo_id="MattoTT/ur5e_pick_place_v2" --policy.type=diffu
 ## Test run
 lerobot-train --dataset.repo_id="MattoTT/ur5e_pick_place_v2" --policy.type=diffusion \
   --output_dir=outputs/train/test_run \
-  --batch_size=64 --steps=200 --num_workers=22 \
+  --batch_size=128 --steps=200 --num_workers=40 \
   --policy.horizon=16 --policy.n_action_steps=8 \
   --policy.crop_shape="[216, 288]" \
   --save_checkpoint=true --save_freq=20000 \
