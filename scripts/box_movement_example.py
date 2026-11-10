@@ -13,6 +13,14 @@ GRIPPER_WAIT = 500
 # Gripper command for a closed grasp (0 = open, 255 = fully closed)
 GRIP_CLOSE = 255
 
+# Hover offsets. Planning straight to the hover pose above the box (or drop
+# point) lands the expert exactly centred every time, so the demos never show
+# what to do when slightly off, and a trained policy that arrives 1-2 cm off
+# stalls there. Instead, plan to a randomly offset hover pose and correct to
+# the true one with a short straight move, so the data teaches the correction.
+HOVER_OFFSET_MAX = 0.025  # m, radius of the random xy offset
+HOVER_YAW_OFFSET_MAX = np.deg2rad(5)  # rad, random rotation about the tool axis
+
 
 def random_box_pos(m, d):
     rand_x = random.uniform(0.42, 0.68)
@@ -164,6 +172,34 @@ def move_to_point(robot, m, d, start_q, obj_frame, follow=None, max_goals=3):
     return None
 
 
+def offset_hover(frame):
+    """frame shifted by a random xy offset (uniform over a disc) and a small yaw."""
+    r = HOVER_OFFSET_MAX * np.sqrt(random.uniform(0, 1))
+    angle = random.uniform(-np.pi, np.pi)
+    yaw = random.uniform(-HOVER_YAW_OFFSET_MAX, HOVER_YAW_OFFSET_MAX)
+    return sm.SE3(r * np.cos(angle), r * np.sin(angle), 0) * frame * sm.SE3.Rz(yaw)
+
+
+def move_to_hover(robot, m, d, start_q, hover_frame, target_frame):
+    """
+    Plan to a randomly offset hover pose, then move_l to hover_frame (see
+    HOVER_OFFSET_MAX). Returns the q at hover_frame, or None if it cannot be
+    reached or the descent from it to target_frame would leave the IK branch;
+    the queue may already hold part of the motion then, so drop the episode.
+    """
+    offset_frame = offset_hover(hover_frame)
+    q = move_to_point(robot, m, d, start_q, offset_frame, follow=hover_frame)
+    if q is None:
+        return None
+    # About 1 s for the largest offset, quicker for small ones.
+    dist = np.linalg.norm(offset_frame.t[:2] - hover_frame.t[:2])
+    robot.move_l(offset_frame, hover_frame, q, total_time=0.4 + 24 * dist)
+    q = robot.queue[-1][0]
+    if not linear_path_is_continuous(robot, q, hover_frame, target_frame):
+        return None
+    return q
+
+
 def program(d, m):
     # Randomize box positions
     box_xy = random_box_pos(m, d)
@@ -178,8 +214,8 @@ def program(d, m):
     # create an intermediate point 10cm above the object
     approach_frame = obj_frame * sm.SE3(0, 0, -0.1)
 
-    # move to approach_frame
-    q = move_to_point(robot, m, d, start_q, approach_frame, follow=obj_frame)
+    # move to approach_frame, arriving off-centre and correcting
+    q = move_to_hover(robot, m, d, start_q, approach_frame, obj_frame)
     if q is None:
         print("Skipping box: cannot reach it")
         raise RuntimeError("Cannot reach box")
@@ -195,7 +231,7 @@ def program(d, m):
     drop_frame = get_random_drop_frame(m, d, box_xy=box_xy)
 
     approach_frame = drop_frame * sm.SE3(0, 0, -0.1)
-    q = move_to_point(robot, m, d, start_q, approach_frame, follow=drop_frame)
+    q = move_to_hover(robot, m, d, start_q, approach_frame, drop_frame)
     if q is None:
         raise RuntimeError("Cannot reach drop point for box")
 
