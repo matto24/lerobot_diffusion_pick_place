@@ -29,7 +29,12 @@ import torch
 from lerobot.policies import make_pre_post_processors
 from lerobot.policies.diffusion.modeling_diffusion import DiffusionPolicy
 from pick_place_lerobot.expert_episode import measured_gripper
-from pick_place_lerobot.lerobot_dataset import FPS, IMAGE_HEIGHT, IMAGE_WIDTH, SUBSAMPLE_STEPS
+from pick_place_lerobot.lerobot_dataset import (
+    FPS,
+    IMAGE_HEIGHT,
+    IMAGE_WIDTH,
+    SUBSAMPLE_STEPS,
+)
 from scripts.box_movement_example import get_random_drop_frame, random_box_pos
 from src.cam import get_dual_camera_rgb
 from src.paths import PROJECT_ROOT
@@ -48,7 +53,7 @@ def parse_args():
     parser.add_argument(
         "--pretrained-path",
         type=str,
-        default="MattoTT/diffusion_ur5e_pick_place",
+        default="MattoTT/diffusion_ur5e_pick_place_v3",
         help="HuggingFace repo ID or local path to a pretrained_model folder.",
     )
     parser.add_argument("--num-episodes", type=int, default=10)
@@ -58,12 +63,18 @@ def parse_args():
         default=700,
         help="Max policy steps (25 Hz) per episode. Expert demos are 450-500 steps.",
     )
-    parser.add_argument("--seed", type=int, default=1000, help="Episode i uses seed + i.")
-    parser.add_argument("--headless", action="store_true", help="No viewer, run as fast as possible.")
+    parser.add_argument(
+        "--seed", type=int, default=1000, help="Episode i uses seed + i."
+    )
+    parser.add_argument(
+        "--headless", action="store_true", help="No viewer, run as fast as possible."
+    )
     parser.add_argument(
         "--device",
         type=str,
-        default="cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu"),
+        default="cuda"
+        if torch.cuda.is_available()
+        else ("mps" if torch.backends.mps.is_available() else "cpu"),
     )
     return parser.parse_args()
 
@@ -97,11 +108,14 @@ def box_placed(m, d, target_xy: np.ndarray, gripper_cmd: float) -> tuple[bool, f
     return dist < DROP_RADIUS and resting and released, dist
 
 
-def run_episode(args, m, d, renderer, policy, preprocessor, postprocessor, seed, viewer):
+def run_episode(
+    args, m, d, renderer, policy, preprocessor, postprocessor, seed, viewer
+):
     target_xy = reset_episode(m, d, seed)
     policy.reset()
     held = 0
     gripper_target = 0.0
+    prev_q = ur_get_qpos(d, m).copy()
 
     for step_idx in range(args.max_steps):
         if viewer is not None and not viewer.is_running():
@@ -110,8 +124,12 @@ def run_episode(args, m, d, renderer, policy, preprocessor, postprocessor, seed,
         frames = get_dual_camera_rgb(m, d, renderer)
         state = np.append(ur_get_qpos(d, m), measured_gripper(m, d)).astype(np.float32)
         obs = {
-            "observation.images.cam_exterior": to_policy_image(frames["cam_exterior"]).unsqueeze(0),
-            "observation.images.cam_wrist": to_policy_image(frames["cam_wrist"]).unsqueeze(0),
+            "observation.images.cam_exterior": to_policy_image(
+                frames["cam_exterior"]
+            ).unsqueeze(0),
+            "observation.images.cam_wrist": to_policy_image(
+                frames["cam_wrist"]
+            ).unsqueeze(0),
             "observation.state": torch.from_numpy(state).unsqueeze(0),
         }
 
@@ -122,11 +140,16 @@ def run_episode(args, m, d, renderer, policy, preprocessor, postprocessor, seed,
         action_np = action.squeeze(0).cpu().numpy()
         q_target, gripper_target = action_np[:6], float(action_np[6])
 
-        # Hold the action for one frame, like the expert data.
-        for _ in range(SUBSAMPLE_STEPS):
-            ur_ctrl_qpos(d, q_target)
+        # The action is where the arm should be at the end of this frame. Ramp
+        # the target there from the previous action over the frame's physics
+        # steps, like the expert's per-step commands. Holding it constant
+        # instead makes the position servo jump every 40 ms, and that shaking
+        # slides the box out of the gripper during the carry.
+        for i in range(SUBSAMPLE_STEPS):
+            ur_ctrl_qpos(d, prev_q + (q_target - prev_q) * (i + 1) / SUBSAMPLE_STEPS)
             hande_ctrl_qpos(d, gripper_target)
             mujoco.mj_step(m, d)
+        prev_q = q_target
         if viewer is not None:
             viewer.sync()
             time.sleep(1.0 / FPS)
@@ -161,7 +184,11 @@ def main():
     d = mujoco.MjData(m)
     renderer = mujoco.Renderer(m, IMAGE_HEIGHT, IMAGE_WIDTH)
 
-    viewer_ctx = contextlib.nullcontext() if args.headless else mujoco.viewer.launch_passive(m, d)
+    viewer_ctx = (
+        contextlib.nullcontext()
+        if args.headless
+        else mujoco.viewer.launch_passive(m, d)
+    )
     results = []
     try:
         with viewer_ctx as viewer:
@@ -169,7 +196,15 @@ def main():
                 seed = args.seed + ep
                 t0 = time.time()
                 ok, steps, dist = run_episode(
-                    args, m, d, renderer, policy, preprocessor, postprocessor, seed, viewer
+                    args,
+                    m,
+                    d,
+                    renderer,
+                    policy,
+                    preprocessor,
+                    postprocessor,
+                    seed,
+                    viewer,
                 )
                 results.append(ok)
                 print(
@@ -181,7 +216,9 @@ def main():
         print("Stopped early.")
 
     if results:
-        print(f"\nSuccess rate: {sum(results)}/{len(results)} = {100 * np.mean(results):.0f}%")
+        print(
+            f"\nSuccess rate: {sum(results)}/{len(results)} = {100 * np.mean(results):.0f}%"
+        )
 
 
 if __name__ == "__main__":
