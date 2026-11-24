@@ -8,10 +8,13 @@ metadata) is copied unchanged; only the image shapes in meta/info.json are updat
 Usage:
     python downscale_dataset.py SRC_ROOT DST_ROOT [--height 240] [--width 320] [--quality 95]
 
-Example (Colab):
-    python downscale_dataset.py \
-        /root/.cache/huggingface/lerobot/MattoTT/ur5e_pick_place \
-        /content/ur5e_pick_place_small
+Only needed for datasets recorded at 640x480 (the first dataset version). Current
+recordings are already 320x240.
+
+Example:
+    python scripts/downscale_dataset.py \
+        ~/.cache/huggingface/lerobot/MattoTT/ur5e_pick_place \
+        ~/.cache/huggingface/lerobot/local/ur5e_pick_place_small
 """
 
 import argparse

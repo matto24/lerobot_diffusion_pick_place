@@ -2,7 +2,7 @@ import spatialmath as sm
 import mujoco as mj
 import roboticstoolbox as rtb
 import numpy as np
-from spatialmath.base import trinterp, trnorm
+from spatialmath.base import trnorm
 
 
 def ur_ctrl_qpos(data, q_desired):
@@ -24,7 +24,7 @@ def ur_set_qpos(data, q_desired):
         data.ctrl[i] = q_desired[i]
 
 
-def hande_ctrl_qpos(data, gripper_value: int = 0):
+def hande_ctrl_qpos(data, gripper_value: float = 0):
     data.ctrl[6] = gripper_value
 
 
@@ -57,7 +57,6 @@ def _make_tf(R, t):
 
 
 def ur_get_qpos(data, model):
-    # Define the joint names (adjust based on your UR model)
     UR_JOINT_NAMES = [
         "shoulder_pan_joint",
         "shoulder_lift_joint",
@@ -104,10 +103,8 @@ def is_q_valid(d, m, q):
     ur_set_qpos(d, q)
     mj.mj_forward(m, d)
 
-    # Check if there is any collisions
-    # print("testing q: ", q)
+    # Check for collisions
     if d.ncon > 0:
-        # print(f"Collisions detected: {d.ncon}")
         for i in range(d.ncon):
             contact = d.contact[i]
             geom1_name = m.geom(contact.geom1).name
@@ -177,28 +174,7 @@ class UR5robot:
         return tcp_frame
 
     def get_current_q(self):
-        # Define the joint names (adjust based on your UR model)
-        UR_JOINT_NAMES = [
-            "shoulder_pan_joint",
-            "shoulder_lift_joint",
-            "elbow_joint",
-            "wrist_1_joint",
-            "wrist_2_joint",
-            "wrist_3_joint",
-        ]
-        # Get joint IDs
-        joint_ids = [
-            mj.mj_name2id(self.m, mj.mjtObj.mjOBJ_JOINT, name)
-            for name in UR_JOINT_NAMES
-        ]
-        # Get qpos indices for the joints
-        # (since qpos is a flat array, we need to know where each joint's value is stored)
-        qpos_indices = []
-        for jid in joint_ids:
-            # Each joint's position is stored at data.qpos[model.jnt_qposadr[jid]]
-            qpos_indices.append(self.m.jnt_qposadr[jid])
-        current_q = self.d.qpos[qpos_indices]
-        return current_q
+        return ur_get_qpos(self.d, self.m)
 
     def set_gripper(self, value, t=100):
         last_q = self.queue[-1][0]
@@ -206,24 +182,12 @@ class UR5robot:
             self.queue.append((last_q, value))
         self.gripper_value = value
 
-    def move_l(
-        self, T0: sm.SE3, T1: sm.SE3, q0, total_time: int, time_step=0.002
-    ) -> list[sm.SE3]:
+    def move_l(self, T0: sm.SE3, T1: sm.SE3, q0, total_time: float, time_step=0.002):
+        """Queue a straight-line Cartesian move T0 -> T1, one IK solution per physics step."""
         steps = int(total_time / time_step)
         qinit = q0
-        for cpose in rtb.ctraj(T0=T0, T1=T1, t=steps):  # .s to get position information
+        for cpose in rtb.ctraj(T0=T0, T1=T1, t=steps):
             q_step = self.robot_ur5.ik_LM(Tep=cpose, q0=qinit)
             if q_step.success:
                 self.queue.append((q_step.q, None))
                 qinit = q_step.q
-
-    def move_j(self, start_q, end_q, t=100):
-        for step in rtb.jtraj(
-            q0=start_q, qf=end_q, t=t
-        ).s:  # .s to get position information
-            self.queue.append((step, self.gripper_value))
-
-    def move_j_via(self, points, t=100):
-        # a list of q poses -> a joint space interpolaton
-        for i in range(1, len(points)):
-            self.move_j(points[i - 1], points[i], t=t)

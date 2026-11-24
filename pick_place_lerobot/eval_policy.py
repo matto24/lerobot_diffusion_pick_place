@@ -91,6 +91,9 @@ def reset_episode(m, d, seed: int) -> np.ndarray:
     """Reset like generate_single_episode does. Returns the drop target xy."""
     random.seed(seed)
     np.random.seed(seed)
+    # The diffusion sampler draws its noise from torch, so seed it too, or the
+    # same scene gives a different rollout on every run.
+    torch.manual_seed(seed)
     mujoco.mj_resetData(m, d)
     ur_set_qpos(d, HOME_Q)
     hande_ctrl_qpos(d, 0)

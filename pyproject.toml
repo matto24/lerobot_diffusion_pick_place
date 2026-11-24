@@ -1,17 +1,13 @@
 [project]
-name = "rob-vis-proj-code"
+name = "lerobot-diffusion-pick-place"
 version = "0.1.0"
-description = "Add your description here"
+description = "Diffusion Policy pick-and-place on a simulated UR5e with LeRobot and MuJoCo"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "lerobot[dataset,dataset-viz,diffusion, training]>=0.7.0",
-  "matplotlib>=3.10.7",
+  "lerobot[dataset,dataset-viz,diffusion,training]>=0.7.0",
   "mujoco>=3.3.7",
-  "numpy-quaternion>=2024.0.12",
   "ompl>=1.7.0",
-  "open3d>=0.19.0",
-  "pandas>=2.3.3",
   "roboticstoolbox-python>=1.1.1",
 ]
 
