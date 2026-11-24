@@ -10,3 +10,8 @@ wheels/
 .venv
 
 typings/
+
+# Training outputs and local datasets
+outputs/
+*.jpeg
+.DS_Store
